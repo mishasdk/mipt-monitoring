@@ -1,6 +1,6 @@
 {
-  "inference_time_ms": 42.5,
-  "precision": 0.91,
+  "inference_time_ms": 55,
+  "precision": 0.90,
   "model_version": "v1.0",
   "updated_at": "2026-05-12T10:00:00Z"
 }
