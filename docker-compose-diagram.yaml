@@ -1,0 +1,136 @@
+services:
+
+  # 1. Приём и доставка видео
+  ingest_gateway:
+    container_name: ingest_gateway
+    depends_on:
+      - broker
+    labels:
+      "docker_compose_diagram.cluster": "Приём и доставка видео"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Приём RTMP/WebRTC, нарезка на кадры"
+
+  compositor:
+    container_name: compositor
+    depends_on:
+      - broker
+    labels:
+      "docker_compose_diagram.cluster": "Приём и доставка видео"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Сборка и отдача видеопотока"
+
+  # 2. Брокер сообщений
+  broker:
+    container_name: broker
+    depends_on:
+      - person_detector
+      - generative_service
+    labels:
+      "docker_compose_diagram.cluster": "Брокер сообщений"
+      "docker_compose_diagram.icon": "diagrams.onprem.queue.Kafka"
+      "docker_compose_diagram.description": "Стримы frames.raw / analyzed / final"
+
+  # 3. Дискриминативный ИИ
+  person_detector:
+    container_name: person_detector
+    depends_on:
+      - mlinference
+    labels:
+      "docker_compose_diagram.cluster": "Дискриминативный ИИ"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Детекция людей и одежды"
+
+  # 4. Генеративный ИИ
+  generative_service:
+    container_name: generative_service
+    depends_on:
+      - mlinference
+      - brand_catalog
+      - monitoring
+    labels:
+      "docker_compose_diagram.cluster": "Генеративный ИИ"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Inpainting логотипа на одежде"
+
+  # 5. Каталог брендов
+  brand_catalog:
+    container_name: brand_catalog
+    depends_on:
+      - brand_catalog_db
+    labels:
+      "docker_compose_diagram.cluster": "Каталог брендов"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Логотипы и кампании"
+
+  brand_catalog_db:
+    container_name: brand_catalog_db
+    labels:
+      "docker_compose_diagram.cluster": "Каталог брендов"
+      "docker_compose_diagram.icon": "diagrams.aws.database.RDS"
+      "docker_compose_diagram.description": "Хранилище ассетов"
+
+  # 6. Инференс
+  mlinference:
+    container_name: mlinference
+    depends_on:
+      - mlregistry
+    labels:
+      "docker_compose_diagram.cluster": "Инференс"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Triton: единая точка инференса"
+
+  # 7. Репозиторий моделей
+  mlregistry:
+    container_name: mlregistry
+    labels:
+      "docker_compose_diagram.cluster": "Репозиторий моделей"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Версионирование моделей"
+
+  mlregistry_db:
+    container_name: mlregistry_db
+    labels:
+      "docker_compose_diagram.cluster": "Репозиторий моделей"
+      "docker_compose_diagram.icon": "diagrams.aws.database.RDS"
+      "docker_compose_diagram.description": "Хранилище репозиториев"
+
+  # 8. Обучение ML модели
+  mltrain:
+    container_name: mltrain
+    depends_on:
+      - mlregistry
+    labels:
+      "docker_compose_diagram.cluster": "Обучение ML модели"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Обучение моделей"
+
+  airflow:
+    image: apache/airflow:2.8.1
+    container_name: airflow
+    labels:
+      "docker_compose_diagram.cluster": "Обучение ML модели"
+      "docker_compose_diagram.description": "ML pipelines"
+
+  mltrain_db:
+    container_name: mltrain_db
+    labels:
+      "docker_compose_diagram.cluster": "Обучение ML модели"
+      "docker_compose_diagram.icon": "diagrams.aws.database.RDS"
+      "docker_compose_diagram.description": "Хранилище"
+
+  # 9. Мониторинг (compliance + метрики)
+  monitoring:
+    container_name: monitoring
+    depends_on:
+      - monitoring_db
+    labels:
+      "docker_compose_diagram.cluster": "Мониторинг"
+      "docker_compose_diagram.icon": "diagrams.onprem.compute.Server"
+      "docker_compose_diagram.description": "Anti-deepfake guard, метрики, аудит"
+
+  monitoring_db:
+    container_name: monitoring_db
+    labels:
+      "docker_compose_diagram.cluster": "Мониторинг"
+      "docker_compose_diagram.icon": "diagrams.aws.database.RDS"
+      "docker_compose_diagram.description": "Журнал compliance-событий"
