@@ -24,3 +24,21 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: dqops
+      POSTGRES_PASSWORD: dqops
+      POSTGRES_DB: dqops_db
+    ports:
+      - "5432:5432"
+
+  dqops:
+    image: dqops/dqo:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dqops_workspace:/dqo/userhome
+    depends_on:
+      - postgres
