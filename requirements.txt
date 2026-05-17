@@ -11,3 +11,7 @@ starlette==0.38.6
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.30.6
+scikit-learn==1.5.2
+pandas==2.2.3
+numpy==1.26.4
+evidently==0.4.30
