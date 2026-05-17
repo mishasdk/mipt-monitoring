@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Response
 from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
 
-from model import precision_clean, run_drift_report
+from model import precision_clean, run_drift_report, run_quality_report
 
 app = FastAPI()
 
@@ -16,6 +16,7 @@ PRECISION = Gauge("ml_precision", "Model precision score")
 DRIFT_SCORE = Gauge("ml_drift_score", "Share of drifted features (0–1)")
 DRIFTED_FEATURES = Gauge("ml_drifted_features_count", "Number of features with detected drift")
 PRECISION_DRIFTED_GAUGE = Gauge("ml_precision_drifted", "Model precision evaluated on current data")
+MISSING_VALUES = Gauge("ml_missing_values_share", "Share of missing values in current batch")
 
 _drift_state: dict = {
     "drift_factor": 1.0,
@@ -27,12 +28,25 @@ _drift_state: dict = {
     "last_run_at": None,
 }
 
+_quality_state: dict = {
+    "number_of_missing_values": 0,
+    "share_of_missing_values": 0.0,
+    "number_of_duplicated_rows": 0,
+    "number_of_rows": 0,
+    "last_run_at": None,
+}
+
 
 def _apply_drift_result(result: dict) -> None:
     _drift_state.update(result)
     DRIFT_SCORE.set(result["drift_score"])
     DRIFTED_FEATURES.set(result["drifted_features_count"])
     PRECISION_DRIFTED_GAUGE.set(result["precision_drifted"])
+
+
+def _apply_quality_result(result: dict) -> None:
+    _quality_state.update(result)
+    MISSING_VALUES.set(result["share_of_missing_values"])
 
 
 @app.get("/metrics", response_class=Response)
@@ -66,14 +80,21 @@ def get_drift_state():
 def trigger_drift():
     """Simulate data drift: current batch = reference * 10."""
     _apply_drift_result(run_drift_report(factor=10.0))
-    return _drift_state
+    _apply_quality_result(run_quality_report(factor=10.0))
+    return {**_drift_state, "quality": _quality_state}
 
 
 @app.post("/api/drift/reset")
 def reset_drift():
     """Reset to no drift: current batch matches reference distribution."""
     _apply_drift_result(run_drift_report(factor=1.0))
-    return _drift_state
+    _apply_quality_result(run_quality_report(factor=1.0))
+    return {**_drift_state, "quality": _quality_state}
+
+
+@app.get("/api/quality")
+def get_quality_state():
+    return _quality_state
 
 
 @app.get("/health")

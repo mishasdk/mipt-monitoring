@@ -3,8 +3,11 @@ services:
     build: .
     ports:
       - "8000:8000"
+    environment:
+      - EVIDENTLY_WORKSPACE=/evidently_workspace
     volumes:
       - ./metrics.json:/metrics.json
+      - ./evidently_workspace:/evidently_workspace
 
   prometheus:
     image: prom/prometheus:latest
@@ -25,20 +28,10 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/dashboards:/var/lib/grafana/dashboards
 
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: dqops
-      POSTGRES_PASSWORD: dqops
-      POSTGRES_DB: dqops_db
+  evidently-ui:
+    build: .
+    command: evidently ui --workspace /evidently_workspace --host 0.0.0.0 --port 8001
     ports:
-      - "5432:5432"
-
-  dqops:
-    image: dqops/dqo:latest
-    ports:
-      - "8080:8080"
+      - "8001:8001"
     volumes:
-      - ./dqops_workspace:/dqo/userhome
-    depends_on:
-      - postgres
+      - ./evidently_workspace:/evidently_workspace
